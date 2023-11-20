@@ -11,6 +11,7 @@ import (
 type Category struct {
 	ID           int64  `json:"id"`
 	CategoryName string `json:"category_name"`
+	SectionName  string `json:"section_name"`
 }
 
 type Good struct {
@@ -25,6 +26,7 @@ type Good struct {
 }
 
 type Unit struct {
-	ID       int64  `json:"id"`
-	UnitName string `json:"unit_name"`
+	ID        int64  `json:"id"`
+	UnitName  string `json:"unit_name"`
+	UnitValue int64  `json:"unit_value"`
 }

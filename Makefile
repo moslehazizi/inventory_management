@@ -2,7 +2,7 @@ migratefilesup:
 	migrate create -ext sql -dir db/migration -seq init_schema
 	
 # db/migration dir is in the project dir
-# Copy the sql codes of Inventory_Management.sql in db_info dir to -
+# Copy the sql codes of "Inventory Management.sql" in db_info dir to -
 # the migration file with "up" suffix in db/migration dir after you run  "$ make migratefilesup"
 # add these 3 lines to a file with "down" suffix:
 

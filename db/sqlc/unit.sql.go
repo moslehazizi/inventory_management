@@ -11,16 +11,22 @@ import (
 
 const createUnit = `-- name: CreateUnit :one
 INSERT INTO units (
-  unit_name
+  unit_name,
+  unit_value
 ) VALUES (
-  $1
-) RETURNING id, unit_name
+  $1, $2
+) RETURNING id, unit_name, unit_value
 `
 
-func (q *Queries) CreateUnit(ctx context.Context, unitName string) (Unit, error) {
-	row := q.db.QueryRowContext(ctx, createUnit, unitName)
+type CreateUnitParams struct {
+	UnitName  string `json:"unit_name"`
+	UnitValue int64  `json:"unit_value"`
+}
+
+func (q *Queries) CreateUnit(ctx context.Context, arg CreateUnitParams) (Unit, error) {
+	row := q.db.QueryRowContext(ctx, createUnit, arg.UnitName, arg.UnitValue)
 	var i Unit
-	err := row.Scan(&i.ID, &i.UnitName)
+	err := row.Scan(&i.ID, &i.UnitName, &i.UnitValue)
 	return i, err
 }
 
@@ -35,7 +41,7 @@ func (q *Queries) DeleteUnit(ctx context.Context, id int64) error {
 }
 
 const listUnits = `-- name: ListUnits :many
-SELECT id, unit_name FROM units
+SELECT id, unit_name, unit_value FROM units
 ORDER BY id
 LIMIT $1
 OFFSET $2
@@ -55,7 +61,7 @@ func (q *Queries) ListUnits(ctx context.Context, arg ListUnitsParams) ([]Unit, e
 	items := []Unit{}
 	for rows.Next() {
 		var i Unit
-		if err := rows.Scan(&i.ID, &i.UnitName); err != nil {
+		if err := rows.Scan(&i.ID, &i.UnitName, &i.UnitValue); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -71,19 +77,21 @@ func (q *Queries) ListUnits(ctx context.Context, arg ListUnitsParams) ([]Unit, e
 
 const updateUnit = `-- name: UpdateUnit :one
 UPDATE units
-  set unit_name = $2
+  set unit_name = $2,
+      unit_value = $3
 WHERE id = $1
-RETURNING id, unit_name
+RETURNING id, unit_name, unit_value
 `
 
 type UpdateUnitParams struct {
-	ID       int64  `json:"id"`
-	UnitName string `json:"unit_name"`
+	ID        int64  `json:"id"`
+	UnitName  string `json:"unit_name"`
+	UnitValue int64  `json:"unit_value"`
 }
 
 func (q *Queries) UpdateUnit(ctx context.Context, arg UpdateUnitParams) (Unit, error) {
-	row := q.db.QueryRowContext(ctx, updateUnit, arg.ID, arg.UnitName)
+	row := q.db.QueryRowContext(ctx, updateUnit, arg.ID, arg.UnitName, arg.UnitValue)
 	var i Unit
-	err := row.Scan(&i.ID, &i.UnitName)
+	err := row.Scan(&i.ID, &i.UnitName, &i.UnitValue)
 	return i, err
 }

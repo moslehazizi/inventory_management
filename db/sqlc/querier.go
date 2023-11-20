@@ -9,9 +9,9 @@ import (
 )
 
 type Querier interface {
-	CreateCategory(ctx context.Context, categoryName string) (Category, error)
+	CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error)
 	CreateGood(ctx context.Context, arg CreateGoodParams) (Good, error)
-	CreateUnit(ctx context.Context, unitName string) (Unit, error)
+	CreateUnit(ctx context.Context, arg CreateUnitParams) (Unit, error)
 	DeleteCategory(ctx context.Context, id int64) error
 	DeleteGood(ctx context.Context, id int64) error
 	DeleteUnit(ctx context.Context, id int64) error

@@ -1,8 +1,9 @@
 -- name: CreateCategory :one
 INSERT INTO categories (
-  category_name
+  category_name,
+  section_name
 ) VALUES (
-  $1
+  $1, $2
 ) RETURNING *;
 
 -- name: GetCategory :one
@@ -17,7 +18,8 @@ OFFSET $2;
 
 -- name: UpdateCategory :one
 UPDATE categories
-  set category_name = $2
+  set category_name = $2,
+      section_name = $3
 WHERE id = $1
 RETURNING *;
 

@@ -1,11 +1,13 @@
 CREATE TABLE "categories" (
   "id" bigserial PRIMARY KEY,
-  "category_name" varchar NOT NULL
+  "category_name" varchar NOT NULL,
+  "section_name" varchar NOT NULL
 );
 
 CREATE TABLE "units" (
   "id" bigserial PRIMARY KEY,
-  "unit_name" varchar NOT NULL
+  "unit_name" varchar NOT NULL,
+  "unit_value" bigint NOT NULL
 );
 
 CREATE TABLE "goods" (

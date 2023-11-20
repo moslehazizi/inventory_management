@@ -1,8 +1,9 @@
 -- name: CreateUnit :one
 INSERT INTO units (
-  unit_name
+  unit_name,
+  unit_value
 ) VALUES (
-  $1
+  $1, $2
 ) RETURNING *;
 
 -- name: ListUnits :many
@@ -13,7 +14,8 @@ OFFSET $2;
 
 -- name: UpdateUnit :one
 UPDATE units
-  set unit_name = $2
+  set unit_name = $2,
+      unit_value = $3
 WHERE id = $1
 RETURNING *;
 
