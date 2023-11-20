@@ -14,7 +14,7 @@ CREATE TABLE "goods" (
   "model" varchar NOT NULL,
   "unit" bigint NOT NULL,
   "amount" bigint NOT NULL,
-  "desc" varchar NOT NULL,
+  "good_desc" varchar NOT NULL,
   "created_at" timestamptz NOT NULL DEFAULT (now())
 );
 
