@@ -13,6 +13,20 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+
+    services:
+     
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_USER: mosleh
+          POSTGRES_PASSWORD: 1234
+          POSTGRES_DB: inventory_management
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
 
     - name: Set up Go
@@ -22,6 +36,9 @@ jobs:
 
     - name: Check out code into the Go module directory
       uses: actions/checkout@v3
+
+    - name: Run migrations
+      run: make migrateup
 
     - name: Test
       run: make test
