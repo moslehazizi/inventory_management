@@ -22,6 +22,8 @@ jobs:
           POSTGRES_USER: mosleh
           POSTGRES_PASSWORD: 1234
           POSTGRES_DB: inventory_management
+        ports: 
+          - 5432:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
