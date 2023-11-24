@@ -16,6 +16,9 @@ postgres:
 postgresstop:
 	docker stop postgresInv
 
+postgresstart:
+	docker start postgresInv
+
 postgresdown:
 	docker rm postgresInv
 
@@ -43,4 +46,4 @@ test:
 server:
 	go run main.go
 
-.PHONY: migratefilesup postgres postgresstop postgresdown createdb dropdb execdb migrateup migratedown sqlc test server
+.PHONY: migratefilesup postgres postgresstop postgresstart postgresdown createdb dropdb execdb migrateup migratedown sqlc test server
