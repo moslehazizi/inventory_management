@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"inventory_management/util"
 	"log"
 	"os"
 	"testing"
@@ -9,15 +10,15 @@ import (
 	_ "github.com/lib/pq"
 )
 
-const (
-	dbDriver = "postgres"
-	dbSource = "postgres://mosleh:1234@localhost:5432/inventory_management?sslmode=disable"
-)
-
 var testQueries *Queries
 
 func TestMain(m *testing.M) {
-	conn, err := sql.Open(dbDriver, dbSource)
+	config, err := util.LoadConfig("../..")
+	if err != nil {
+		log.Fatal("connot load config:", err)
+	}
+
+	conn, err := sql.Open(config.DBDriver, config.DBSource)
 	if err != nil {
 		log.Fatal("Connot connect to the database:", err)
 	}

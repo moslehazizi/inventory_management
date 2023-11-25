@@ -5,24 +5,24 @@ import (
 )
 
 // Store provides all functions to execute do queries and transactions
-type Store struct {
+type Store interface {
+	Querier
+}
+
+// SQLStore provides all functions to execute SQL queries and transactions
+type SQLStore struct {
 	*Queries
 	db *sql.DB
 }
 
-func NewStore(db *sql.DB) *Store {
-	return &Store{
+func NewStore(db *sql.DB) Store {
+	return &SQLStore{
 		db:      db,
 		Queries: New(db),
 	}
 }
 
-
 // Here is place for implement all transaction in future
-
-
-
-
 
 // // execTx executes a function within a database transaction
 // func (store *Store) execTx(c context.Context, fn func(*Queries) error) error {
@@ -34,7 +34,7 @@ func NewStore(db *sql.DB) *Store {
 // 	err = fn(q)
 // 	if err != nil{
 // 		if rbErr := tx.Rollback(); rbErr != nil {
-// 			return fmt.Errorf("tx err: %v, rb err: %v", err, rbErr) 
+// 			return fmt.Errorf("tx err: %v, rb err: %v", err, rbErr)
 // 		}
 // 		return err
 // 	}
