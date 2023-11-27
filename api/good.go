@@ -42,7 +42,7 @@ func (server *Server) createGood(c *gin.Context) {
 }
 
 type getGoodRequest struct {
-	ID int64 `uri:"id" binding:"required",min=1`
+	ID int64 `uri:"id" binding:"required,min=1"`
 }
 
 func (server *Server) getGood(c *gin.Context) {
@@ -67,8 +67,8 @@ func (server *Server) getGood(c *gin.Context) {
 }
 
 type listGoodRequest struct {
-	PageID   int32 `form:"page_id" binding:"required",min=1`
-	PageSize int32 `form:"page_size" binding:"required",min=5,max=10`
+	PageID   int32 `form:"page_id" binding:"required,min=1"`
+	PageSize int32 `form:"page_size" binding:"required,min=5,max=10"`
 }
 
 type listGoodRequestCategory struct {
@@ -147,7 +147,7 @@ func (server *Server) updateGood(c *gin.Context) {
 
 
 type deleteGoodRequest struct {
-	ID int64 `uri:"id" binding:"required",min=1`
+	ID int64 `uri:"id" binding:"required,min=1"`
 }
 
 func (server *Server) deleteGood(c *gin.Context) {

@@ -36,8 +36,8 @@ func (server *Server) createUnit(c *gin.Context) {
 }
 
 type listUnitRequest struct {
-	PageID   int32 `form:"page_id" binding:"required",min=1`
-	PageSize int32 `form:"page_size" binding:"required",min=5,max=10`
+	PageID   int32 `form:"page_id" binding:"required,min=1"`
+	PageSize int32 `form:"page_size" binding:"required,min=5,max=10"`
 }
 
 func (server *Server) listUnit(c *gin.Context) {
@@ -104,7 +104,7 @@ func (server *Server) updateUnit(c *gin.Context) {
 }
 
 type deleteUnitRequest struct {
-	ID int64 `uri:"id" binding:"required",min=1`
+	ID int64 `uri:"id" binding:"required,min=1"`
 }
 
 func (server *Server) deleteUnit(c *gin.Context) {

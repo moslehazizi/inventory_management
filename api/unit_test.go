@@ -19,85 +19,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetCategory(t *testing.T) {
-	category := randomCategory()
-
-	testCases := []struct {
-		name          string
-		categoryID    int64
-		buildStubs    func(store *mockdb.MockStore)
-		checkResponse func(T *testing.T, recorder *httptest.ResponseRecorder)
-	}{
-		{
-			name:       "OK",
-			categoryID: category.ID,
-			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().GetCategory(gomock.Any(), gomock.Eq(category.ID)).Times(1).Return(category, nil)
-			},
-			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusOK, recorder.Code)
-				requireBodyMatchCategory(t, recorder.Body, category)
-
-			},
-		},
-		{
-			name:       "NotFound",
-			categoryID: category.ID,
-			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().GetCategory(gomock.Any(), gomock.Eq(category.ID)).Times(1).Return(db.Category{}, sql.ErrNoRows)
-			},
-			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusNotFound, recorder.Code)
-			},
-		},
-		{
-			name:       "InternalError",
-			categoryID: category.ID,
-			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().GetCategory(gomock.Any(), gomock.Eq(category.ID)).Times(1).Return(db.Category{}, sql.ErrConnDone)
-			},
-			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusInternalServerError, recorder.Code)
-			},
-		},
-		{
-			name:       "InvalidID",
-			categoryID: 0,
-			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().GetCategory(gomock.Any(), gomock.Any()).Times(0)
-			},
-			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusBadRequest, recorder.Code)
-			},
-		},
-	}
-
-	for i := range testCases {
-		tc := testCases[i]
-
-		t.Run(tc.name, func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
-
-			store := mockdb.NewMockStore(ctrl)
-			tc.buildStubs(store)
-
-			server := NewServer(store)
-			recorder := httptest.NewRecorder()
-			url := fmt.Sprintf("/categories/%d", tc.categoryID)
-			request, err := http.NewRequest(http.MethodGet, url, nil)
-
-			require.NoError(t, err)
-			server.router.ServeHTTP(recorder, request)
-			tc.checkResponse(t, recorder)
-		})
-
-	}
-
-}
-
-func TestCreateCategory(t *testing.T) {
-	category := randomCategory()
+func TestCreateUnit(t *testing.T) {
+	unit := randomUnit()
 
 	testCases := []struct {
 		name          string
@@ -108,33 +31,29 @@ func TestCreateCategory(t *testing.T) {
 		{
 			name: "OK",
 			body: gin.H{
-				"category_name": category.CategoryName,
-				"section_name":  category.SectionName,
+				"unit_name":  unit.UnitName,
+				"unit_value": unit.UnitValue,
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				arg := db.CreateCategoryParams{
-					CategoryName: category.CategoryName,
-					SectionName:  category.SectionName,
+				arg := db.CreateUnitParams{
+					UnitName:  unit.UnitName,
+					UnitValue: unit.UnitValue,
 				}
-				store.EXPECT().CreateCategory(gomock.Any(), gomock.Eq(arg)).Times(1).Return(category, nil)
+				store.EXPECT().CreateUnit(gomock.Any(), gomock.Eq(arg)).Times(1).Return(unit, nil)
 			},
 			checkResponse: func(recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, recorder.Code)
-				requireBodyMatchCategoryRequest(t, recorder.Body, category)
+				requireBodyMatchUnitRequest(t, recorder.Body, unit)
 			},
 		},
 		{
 			name: "InternalError",
 			body: gin.H{
-				"category_name": category.CategoryName,
-				"section_name":  category.SectionName,
+				"unit_name":  unit.UnitName,
+				"unit_value": unit.UnitValue,
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				arg := db.CreateCategoryParams{
-					CategoryName: category.CategoryName,
-					SectionName:  category.SectionName,
-				}
-				store.EXPECT().CreateCategory(gomock.Any(), gomock.Eq(arg)).Times(1).Return(db.Category{}, sql.ErrConnDone)
+				store.EXPECT().CreateUnit(gomock.Any(), gomock.Any()).Times(1).Return(db.Unit{}, sql.ErrConnDone)
 			},
 			checkResponse: func(recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
@@ -143,11 +62,11 @@ func TestCreateCategory(t *testing.T) {
 		{
 			name: "InvalidContext",
 			body: gin.H{
-				"category_name": "",
-				"section_name":  "",
+				"unit_name":  "",
+				"unit_value": "",
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().CreateCategory(gomock.Any(), gomock.Any()).Times(0)
+				store.EXPECT().CreateUnit(gomock.Any(), gomock.Any()).Times(0)
 			},
 			checkResponse: func(recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
@@ -172,7 +91,7 @@ func TestCreateCategory(t *testing.T) {
 			data, err := json.Marshal(tc.body)
 			require.NoError(t, err)
 
-			url := "/categories"
+			url := "/units"
 			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(data))
 			require.NoError(t, err)
 
@@ -184,13 +103,13 @@ func TestCreateCategory(t *testing.T) {
 
 }
 
-func TestListCategory(t *testing.T) {
+func TestListUnit(t *testing.T) {
 
-	n := 6
-	c_categories := make([]db.Category, n)
+	n := 5
+	units := make([]db.Unit, n)
 
 	for i := 0; i < n; i++ {
-		c_categories[i] = randomCategory()
+		units[i] = randomUnit()
 	}
 
 	type Query struct {
@@ -211,15 +130,15 @@ func TestListCategory(t *testing.T) {
 				pageSize: n,
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				arg := db.ListCategoriesParams{
+				arg := db.ListUnitsParams{
 					Limit:  int32(n),
 					Offset: 0,
 				}
-				store.EXPECT().ListCategories(gomock.Any(), gomock.Eq(arg)).Times(1).Return(c_categories, nil)
+				store.EXPECT().ListUnits(gomock.Any(), gomock.Eq(arg)).Times(1).Return(units, nil)
 			},
 			checkResponse: func(recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, recorder.Code)
-				requireBodyMatchCategories(t, recorder.Body, c_categories)
+				requireBodyMatchUnits(t, recorder.Body, units)
 
 			},
 		},
@@ -230,11 +149,7 @@ func TestListCategory(t *testing.T) {
 				pageSize: n,
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				arg := db.ListCategoriesParams{
-					Limit:  int32(n),
-					Offset: 0,
-				}
-				store.EXPECT().ListCategories(gomock.Any(), gomock.Eq(arg)).Times(1).Return([]db.Category{}, sql.ErrConnDone)
+				store.EXPECT().ListUnits(gomock.Any(), gomock.Any()).Times(1).Return([]db.Unit{}, sql.ErrConnDone)
 			},
 			checkResponse: func(recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
@@ -247,7 +162,7 @@ func TestListCategory(t *testing.T) {
 				pageSize: n,
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().ListCategories(gomock.Any(), gomock.Any()).Times(0)
+				store.EXPECT().ListUnits(gomock.Any(), gomock.Any()).Times(0)
 			},
 			checkResponse: func(recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
@@ -260,7 +175,7 @@ func TestListCategory(t *testing.T) {
 				pageSize: 10000,
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().ListCategories(gomock.Any(), gomock.Any()).Times(0)
+				store.EXPECT().ListUnits(gomock.Any(), gomock.Any()).Times(0)
 			},
 			checkResponse: func(recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
@@ -281,7 +196,7 @@ func TestListCategory(t *testing.T) {
 			server := NewServer(store)
 			recorder := httptest.NewRecorder()
 
-			url := "/categories"
+			url := "/units"
 			request, err := http.NewRequest(http.MethodGet, url, nil)
 			require.NoError(t, err)
 
@@ -298,60 +213,60 @@ func TestListCategory(t *testing.T) {
 
 }
 
-func TestUpdateCategory(t *testing.T) {
+func TestUpdateUnit(t *testing.T) {
 
-	category := randomCategory()
-	categoryUpdate := randomCategory()
+	unit := randomUnit()
+	unitUpdate := randomUnit()
 
 	testCases := []struct {
 		name          string
-		CategoryID    int64
+		UnitID        int64
 		body          gin.H
 		buildStubs    func(store *mockdb.MockStore)
 		checkResponse func(recorder *httptest.ResponseRecorder)
 	}{
 		{
-			name: "OK",
-			CategoryID: category.ID,
+			name:   "OK",
+			UnitID: unit.ID,
 			body: gin.H{
-				"category_name": categoryUpdate.CategoryName,
-				"section_name":  categoryUpdate.SectionName,
+				"unit_name":  unitUpdate.UnitName,
+				"unit_value": unitUpdate.UnitValue,
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				arg := db.UpdateCategoryParams{
-					ID:           category.ID,
-					CategoryName: categoryUpdate.CategoryName,
-					SectionName:  categoryUpdate.SectionName,
+				arg := db.UpdateUnitParams{
+					ID:        unit.ID,
+					UnitName:  unitUpdate.UnitName,
+					UnitValue: unitUpdate.UnitValue,
 				}
-				store.EXPECT().UpdateCategory(gomock.Any(), gomock.Eq(arg)).Times(1).Return(categoryUpdate, nil)
+				store.EXPECT().UpdateUnit(gomock.Any(), gomock.Eq(arg)).Times(1).Return(unitUpdate, nil)
 			},
 			checkResponse: func(recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, recorder.Code)
-				requireBodyMatchCategoryRequest(t, recorder.Body, categoryUpdate)
+				requireBodyMatchUnitRequest(t, recorder.Body, unitUpdate)
 			},
 		},
 		{
-			name: "InternalError",
-			CategoryID: category.ID,
+			name:   "InternalError",
+			UnitID: unit.ID,
 			body: gin.H{
-				"category_name": categoryUpdate.CategoryName,
-				"section_name":  categoryUpdate.SectionName,
+				"unit_name":  unitUpdate.UnitName,
+				"unit_value": unitUpdate.UnitValue,
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				arg := db.UpdateCategoryParams{
-					ID:           category.ID,
-					CategoryName: categoryUpdate.CategoryName,
-					SectionName:  categoryUpdate.SectionName,
+				arg := db.UpdateUnitParams{
+					ID:        unit.ID,
+					UnitName:  unitUpdate.UnitName,
+					UnitValue: unitUpdate.UnitValue,
 				}
-				store.EXPECT().UpdateCategory(gomock.Any(), gomock.Eq(arg)).Times(1).Return(db.Category{}, sql.ErrConnDone)
+				store.EXPECT().UpdateUnit(gomock.Any(), gomock.Eq(arg)).Times(1).Return(db.Unit{}, sql.ErrConnDone)
 			},
 			checkResponse: func(recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
 			},
 		},
 		{
-			name: "InvalidContext",
-			CategoryID: category.ID,
+			name:       "InvalidContext",
+			UnitID: unit.ID,
 			body: gin.H{
 				"category_name": "",
 				"section_name":  "",
@@ -365,7 +280,7 @@ func TestUpdateCategory(t *testing.T) {
 		},
 		{
 			name:       "InvalidID",
-			CategoryID: 0,
+			UnitID: 0,
 			body: gin.H{
 				"category_name": "",
 				"section_name":  "",
@@ -379,18 +294,18 @@ func TestUpdateCategory(t *testing.T) {
 		},
 		{
 			name:       "NotFound",
-			CategoryID: category.ID,
+			UnitID: unit.ID,
 			body: gin.H{
-				"category_name": categoryUpdate.CategoryName,
-				"section_name":  categoryUpdate.SectionName,
+				"unit_name": unitUpdate.UnitName,
+				"unit_value":  unitUpdate.UnitValue,
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				arg := db.UpdateCategoryParams{
-					ID:           category.ID,
-					CategoryName: categoryUpdate.CategoryName,
-					SectionName:  categoryUpdate.SectionName,
+				arg := db.UpdateUnitParams{
+					ID:          unit.ID,
+					UnitName:    unitUpdate.UnitName,
+					UnitValue: unitUpdate.UnitValue,
 				}
-				store.EXPECT().UpdateCategory(gomock.Any(), gomock.Eq(arg)).Times(1).Return(db.Category{}, sql.ErrNoRows)
+				store.EXPECT().UpdateUnit(gomock.Any(), gomock.Eq(arg)).Times(1).Return(db.Unit{}, sql.ErrNoRows)
 			},
 			checkResponse: func(recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusNotFound, recorder.Code)
@@ -415,7 +330,7 @@ func TestUpdateCategory(t *testing.T) {
 			data, err := json.Marshal(tc.body)
 			require.NoError(t, err)
 
-			url := fmt.Sprintf("/categories/%d", tc.CategoryID)
+			url := fmt.Sprintf("/units/%d", tc.UnitID)
 			request, err := http.NewRequest(http.MethodPut, url, bytes.NewReader(data))
 			require.NoError(t, err)
 
@@ -427,20 +342,20 @@ func TestUpdateCategory(t *testing.T) {
 
 }
 
-func TestDeleteCategory(t *testing.T) {
-	category := randomCategory()
+func TestDeleteUnit(t *testing.T) {
+	unit := randomUnit()
 
 	testCases := []struct {
 		name          string
-		categoryID    int64
+		unitID    int64
 		buildStubs    func(store *mockdb.MockStore)
 		checkResponse func(T *testing.T, recorder *httptest.ResponseRecorder)
 	}{
 		{
 			name:       "OK",
-			categoryID: category.ID,
+			unitID: unit.ID,
 			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().DeleteCategory(gomock.Any(), gomock.Eq(category.ID)).Times(1).Return(nil)
+				store.EXPECT().DeleteUnit(gomock.Any(), gomock.Eq(unit.ID)).Times(1).Return(nil)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, recorder.Code)
@@ -448,9 +363,9 @@ func TestDeleteCategory(t *testing.T) {
 		},
 		{
 			name:       "NotFound",
-			categoryID: category.ID,
+			unitID: unit.ID,
 			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().DeleteCategory(gomock.Any(), gomock.Eq(category.ID)).Times(1).Return(sql.ErrNoRows)
+				store.EXPECT().DeleteUnit(gomock.Any(), gomock.Eq(unit.ID)).Times(1).Return(sql.ErrNoRows)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusNotFound, recorder.Code)
@@ -458,9 +373,9 @@ func TestDeleteCategory(t *testing.T) {
 		},
 		{
 			name:       "InternalError",
-			categoryID: category.ID,
+			unitID: unit.ID,
 			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().DeleteCategory(gomock.Any(), gomock.Eq(category.ID)).Times(1).Return(sql.ErrConnDone)
+				store.EXPECT().DeleteUnit(gomock.Any(), gomock.Eq(unit.ID)).Times(1).Return(sql.ErrConnDone)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
@@ -468,9 +383,9 @@ func TestDeleteCategory(t *testing.T) {
 		},
 		{
 			name:       "InvalidID",
-			categoryID: 0,
+			unitID: 0,
 			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().DeleteCategory(gomock.Any(), gomock.Any()).Times(0)
+				store.EXPECT().DeleteUnit(gomock.Any(), gomock.Any()).Times(0)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
@@ -490,7 +405,7 @@ func TestDeleteCategory(t *testing.T) {
 
 			server := NewServer(store)
 			recorder := httptest.NewRecorder()
-			url := fmt.Sprintf("/categories/%d", tc.categoryID)
+			url := fmt.Sprintf("/units/%d", tc.unitID)
 			request, err := http.NewRequest(http.MethodDelete, url, nil)
 
 			require.NoError(t, err)
@@ -502,42 +417,41 @@ func TestDeleteCategory(t *testing.T) {
 
 }
 
-
-func randomCategory() db.Category {
-	return db.Category{
-		ID:           util.RandomInt(1, 1000),
-		CategoryName: util.RandomName(),
-		SectionName:  util.RandomName(),
+func randomUnit() db.Unit {
+	return db.Unit{
+		ID:        util.RandomInt(1, 1000),
+		UnitName:  util.RandomName(),
+		UnitValue: util.RandomInt(1, 8),
 	}
 }
 
-func requireBodyMatchCategory(t *testing.T, body *bytes.Buffer, category db.Category) {
+// func requireBodyMatchUnit(t *testing.T, body *bytes.Buffer, unit db.Unit) {
+// 	data, err := ioutil.ReadAll(body)
+// 	require.NoError(t, err)
+
+// 	var gotUnit db.Unit
+// 	err = json.Unmarshal(data, &gotUnit)
+// 	require.NoError(t, err)
+// 	require.Equal(t, unit, gotUnit)
+// }
+
+func requireBodyMatchUnits(t *testing.T, body *bytes.Buffer, units []db.Unit) {
 	data, err := ioutil.ReadAll(body)
 	require.NoError(t, err)
 
-	var gotCategory db.Category
-	err = json.Unmarshal(data, &gotCategory)
+	var gotUnits []db.Unit
+	err = json.Unmarshal(data, &gotUnits)
 	require.NoError(t, err)
-	require.Equal(t, category, gotCategory)
+	require.Equal(t, units, gotUnits)
 }
 
-func requireBodyMatchCategories(t *testing.T, body *bytes.Buffer, c_categories []db.Category) {
+func requireBodyMatchUnitRequest(t *testing.T, body *bytes.Buffer, unit db.Unit) {
 	data, err := ioutil.ReadAll(body)
 	require.NoError(t, err)
 
-	var gotCategories []db.Category
-	err = json.Unmarshal(data, &gotCategories)
+	var gotUnit db.Unit
+	err = json.Unmarshal(data, &gotUnit)
 	require.NoError(t, err)
-	require.Equal(t, c_categories, gotCategories)
-}
-
-func requireBodyMatchCategoryRequest(t *testing.T, body *bytes.Buffer, category db.Category) {
-	data, err := ioutil.ReadAll(body)
-	require.NoError(t, err)
-
-	var gotCategory db.Category
-	err = json.Unmarshal(data, &gotCategory)
-	require.NoError(t, err)
-	require.Equal(t, category.CategoryName, gotCategory.CategoryName)
-	require.Equal(t, category.SectionName, gotCategory.SectionName)
+	require.Equal(t, unit.UnitName, gotUnit.UnitName)
+	require.Equal(t, unit.UnitValue, gotUnit.UnitValue)
 }
